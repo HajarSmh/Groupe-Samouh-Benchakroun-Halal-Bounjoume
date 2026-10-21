@@ -1,6 +1,6 @@
 # Étude de Conception : [MaintAI]
 
-**Groupe :** [Samouh Hajar / Halal Saad]
+**Groupe :** [Samouh Hajar - Benchakroune Imane - Halal Saad - Bounjoume Oussama]
 **Version :** [finale]
 **Date :** [21/10/2026]
 

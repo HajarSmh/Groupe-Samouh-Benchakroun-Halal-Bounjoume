@@ -1,6 +1,6 @@
 # Compte rendu · TP1 : une API de prédiction pour MaintAI
 
-**Groupe :** …  ·  **Membres :** …  ·  **Date :** 28/10/2026
+**Groupe :** G6  ·  **Membres :** [Samouh Hajar - Benchakroune Imane - Halal Saad - Bounjoume Oussama]  ·  **Date :** 28/10/2026
 
 > Remplissez chaque partie dans ce fichier, puis rendez-le avec la pull request du TP1.
 > Collez les sorties du terminal entre les lignes ``` (trois accents graves).
@@ -12,12 +12,14 @@
 Dernière ligne de `python -m pytest`, juste après la mise en place (rien n'est encore écrit) :
 
 ```
-(à coller : sortie réelle de votre terminal, du type « 3 failed, 4 passed in 0.xxs »)
+======================================== 3 failed, 10 passed, 1 warning in 2.66s ========================================
 ```
 
 Dans `tests/test_api.py`, 4 tests sur 7 passent déjà alors que rien n'est écrit. Lesquels ? Pour les deux tests qui attendent un code 422, expliquez pourquoi ils passent « pour une mauvaise raison » (indice : regardez `extra="forbid"` dans `schemas.py`).
 
-Les 4 tests qui passent sont ceux qui ne dépendent pas du contenu du schéma ni de `predict()` : le test de `/health` (la route est déjà codée), le test de la route inexistante (404, géré par FastAPI) et les deux tests qui attendent un code 422 (température hors bornes, champ inconnu). *(À vérifier avec votre sortie de `pytest`.)*
+Dans `test_api.py`, 3 tests échouent (`test_predict_returns_probability`, `test_high_risk_reading_raises_alert`, `test_503_when_model_missing`) et 4 passent : ceux qui ne dépendent pas du contenu du schéma ni de `predict()`, c'est-à-dire le test de `/health` (la route est déjà codée), le test de la route inexistante (404, géré par FastAPI) et les deux tests qui attendent un code 422 (température hors bornes, champ inconnu).
+
+Les trois échecs le confirment : un relevé **valide** reçoit un 422 au lieu d'un 200 (`assert 422 == 200`), et même le test du 503 reçoit un 422 (`assert 422 == 503`), car le schéma vide rejette tout corps contenant des champs avant même que `predict()` ne s'exécute.
 
 Les deux tests 422 passent pour une mauvaise raison : `SensorReading` ne déclare encore aucun champ (`pass`) et `extra="forbid"` refuse tout champ non déclaré. Donc **n'importe quel corps JSON contenant des champs est rejeté avec un 422**, y compris un relevé parfaitement valide. Le 422 obtenu ne vient pas de la validation des bornes ou du champ inconnu : il vient du fait que le schéma est vide. Le test est « vert » sans prouver que la validation fonctionne.
 
@@ -33,8 +35,24 @@ Les deux tests 422 passent pour une mauvaise raison : `SensorReading` ne déclar
 Après avoir écrit `schemas.py` seul, que donne `python -m pytest`, et quel est le message d'erreur des tests qui échouent ? Pourquoi est-ce un bon signe ?
 
 ```
-(à coller : sortie réelle de votre terminal)
+tests\test_api.py .FF..F.
+...
+reading = SensorReading(temperature_c=60.0, vibration_mm_s=2.0, load_pct=50.0, runtime_hours=5000.0)
+
+    @router.post("/predict", response_model=PredictionOut)
+    def predict(reading: SensorReading) -> PredictionOut:
+>       raise NotImplementedError
+E       NotImplementedError
+
+maintai\api\main.py:46: NotImplementedError
+...
+FAILED tests/test_api.py::test_predict_returns_probability - NotImplementedError
+FAILED tests/test_api.py::test_high_risk_reading_raises_alert - NotImplementedError
+FAILED tests/test_api.py::test_503_when_model_missing - NotImplementedError
+======================================== 3 failed, 10 passed, 1 warning in 4.91s ========================================
 ```
+
+Les 3 mêmes tests échouent encore, mais le message a changé : ce n'est plus un 422, c'est une `NotImplementedError` levée à la ligne 46 de `main.py`. On voit que `reading` est bien devenu un objet `SensorReading(temperature_c=60.0, vibration_mm_s=2.0, ...)` : la validation a réussi.
 
 Les tests qui échouent encore (ceux qui appellent `/v1/predict` avec un relevé valide) remontent une `NotImplementedError`, levée par `predict()` qui n'est pas encore écrite. C'est un bon signe : la requête valide **passe maintenant la validation Pydantic** et arrive jusqu'à la fonction `predict()`. Le schéma fonctionne, et l'échec restant vient bien de la seule partie non écrite, ce qui confirme que les deux fichiers sont indépendants. Les tests 422 passent désormais pour la bonne raison (bornes et `extra="forbid"`).
 
@@ -62,8 +80,10 @@ Charger un modèle (lecture du fichier sur le disque, désérialisation) est une
 Dernière ligne de `python -m pytest` à la fin du TP :
 
 ```
-(à coller : sortie réelle de votre terminal, attendue : « 7 passed in 0.xxs »)
+============================================= 13 passed, 1 warning in 2.75s =============================================
 ```
+
+Les 13 tests passent (7 dans `test_api.py`, 3 dans `test_data.py`, 3 dans `test_train.py`). Le seul avertissement est une dépréciation de `httpx` dans le `TestClient` de Starlette ; il ne vient pas de notre code.
 
 ## 5. L'API en marche
 
@@ -71,9 +91,9 @@ Après `python -m maintai.dataset` et `python -m maintai.train`, lancez `uvicorn
 
 | Requête | Code obtenu | Réponse (le corps JSON) |
 |---|---|---|
-| `GET /health` | 200 | `{"status": "ok", "model_loaded": true}` |
-| `POST /v1/predict` avec `{"temperature_c": 72.5, "vibration_mm_s": 6.1, "load_pct": 85, "runtime_hours": 15000}` | 200 | `{"failure_probability": …, "alert": …, "threshold": …, "model_version": "…"}` *(à recopier depuis votre terminal : les valeurs dépendent de votre modèle entraîné)* |
-| `POST /v1/predict` avec une température de 500 | 422 | `{"detail": [{"type": "less_than_equal", "loc": ["body", "temperature_c"], "msg": "Input should be less than or equal to 150", ...}]}` |
+| `GET /health` | 200 | `{"status":"ok","model_loaded":true}` |
+| `POST /v1/predict` avec `{"temperature_c": 72.5, "vibration_mm_s": 6.1, "load_pct": 85, "runtime_hours": 15000}` | 200 | `{"failure_probability":0.9553,"alert":true,"threshold":0.3,"model_version":"2026-10-28T17:34:41Z"}` |
+| `POST /v1/predict` avec une température de 500 | 422 | `{"detail":[{"type":"less_than_equal","loc":["body","temperature_c"],"msg":"Input should be less than or equal to 150","input":500,"ctx":{"le":150.0}}]}` |
 | `POST /v1/predicte` (faute de frappe dans l'adresse) | 404 | `{"detail": "Not Found"}` |
 
 Dans `/docs`, où voit-on les bornes que vous avez choisies ?

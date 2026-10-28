@@ -118,8 +118,7 @@ Dans la section **Schemas** en bas de la page, sous `SensorReading` : chaque cha
 - Lien de la pull request : …
 - Le tag `tp1` existe sur GitHub : oui / non
 - Qui a relu la pull request, et quel commentaire a-t-il laissé ?
-  …
 
 ## 8. Ce qui reste flou
 
-…
+Tout est clair.

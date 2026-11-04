@@ -25,7 +25,8 @@ Aucune de nos prévisions n'était fausse. Les cinq requêtes ont produit les co
 
 Dernière ligne de `python -m pytest` avec `tests/test_casser.py` (dans `TP/TP1`) :
 
-```====================================== 19 passed, 1 warning in 2.70s =======================================
+```
+====================================== 19 passed, 1 warning in 2.70s =======================================
 ```
 
 À quoi sert `@pytest.mark.parametrize` ? Combien de tests pytest compte-t-il pour votre fonction, et pourquoi ?
@@ -70,7 +71,7 @@ Quelle différence entre `ruff check .` et `python -m pytest` ? Que vérifie cha
 
 **`ruff check .`** : analyse le code Python pour détecter les erreurs potentielles, les imports inutilisés et les problèmes de style, sans exécuter les tests.
 
-- **`python -m pytest`** : exécute les tests automatisés pour vérifier que le programme fonctionne correctement et respecte les résultats attendus.
+**`python -m pytest`** : exécute les tests automatisés pour vérifier que le programme fonctionne correctement et respecte les résultats attendus.
 
 ## 3. Mise en place du TP2 (dans `TP/TP2`)
 
@@ -232,19 +233,20 @@ Dernière ligne de `python -m pytest` avec `headers=HEADERS` :
 ## 7. Questions de compréhension
 
 1. Quelle différence entre 401 et 422 ? Et entre 401 et 403 ?
-   -401 : clé API absente ou invalide.
-   -422 : données envoyées invalides ou incorrectes.
-   -403 : accès refusé malgré une authentification valide.
+   - 401 : clé API absente ou invalide.
+   - 422 : données envoyées invalides ou incorrectes.
+   - 403 : accès refusé malgré une authentification valide.
 2. Pourquoi la clé n'est-elle ni dans le code ni dans Git ? Que contiennent `.env` et `.env.example`, et lequel est commité ?
+
    Pour protéger la clé secrète et éviter qu'elle soit exposée publiquement.
    - .env contient la vraie clé API et n'est pas commité.
    - .env.example contient un exemple de configuration sans vraie clé et est commité.
 3. Pourquoi la clé voyage-t-elle dans un en-tête et pas dans l'URL ?
-   Pour éviter son exposition dans l'historique du navigateur, les logs et les URL partagées.
+   - Pour éviter son exposition dans l'historique du navigateur, les logs et les URL partagées.
 4. Que fait `secrets.compare_digest` de plus qu'un simple `==` ?
-   Il compare deux chaînes de manière sécurisée en limitant les risques d'attaques par analyse du temps de  comparaison.
+   - Il compare deux chaînes de manière sécurisée en limitant les risques d'attaques par analyse du temps de  comparaison.
 5. Qu'est-ce qu'une « origine » ? `http://localhost:5500` et `http://localhost:8000` sont-elles la même origine ?
-   Une origine est définie par le protocole, le nom d'hôte et le port. Non, elles sont différentes car leurs ports (5500 et 8000) ne sont pas identiques.
+   - Une origine est définie par le protocole, le nom d'hôte et le port. Non, elles sont différentes car leurs ports (5500 et 8000) ne sont pas identiques.
 
 ## 8. Le rendu Git
 

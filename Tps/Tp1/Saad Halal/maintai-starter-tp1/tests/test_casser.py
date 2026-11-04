@@ -10,28 +10,36 @@ VALID = {
 }
 
 CAS_REFUSES = [
+    # (description, url, corps, code attendu)
+    # 1. Champ manquant
     (
-        "vibration manquante",
+        "champ manquant",
         "/v1/predict",
-        {k: v for k, v in VALID.items() if k != "vibration_mm_s"},
+        {k: v for k, v in VALID.items() if k != "temperature_c"},
         422,
     ),
-    ("vibration trop elevee", "/v1/predict", {**VALID, "vibration_mm_s": 800}, 422),
+    # 2. Valeur absurde
+    ("valeur absurde", "/v1/predict", {**VALID, "temperature_c": 600}, 422),
+    # 3. Texte au lieu d'un nombre
     (
-        "vibration non numerique",
+        "texte au lieu d'un nombre",
         "/v1/predict",
-        {**VALID, "vibration_mm_s": "eleve"},
+        {**VALID, "temperature_c": "chaud"},
         422,
     ),
-    ("champ en trop", "/v1/predict", {**VALID, "champ_inconnu": 123}, 422),
-    ("mauvaise route", "/doc", VALID, 404),
+    # 4. Champ en trop
+    ("champ en trop", "/v1/predict", {**VALID, "champ_en_trop": 123}, 422),
+    # 5. Mauvaise route
+    ("mauvaise route", "/v1/doc", VALID, 404),
 ]
 
 
 @pytest.mark.parametrize("description, url, corps, attendu", CAS_REFUSES)
 def test_requete_refusee(client, description, url, corps, attendu):
-    r = client.post(url, json=corps, headers=HEADERS)
+    response = client.post(url, json=corps, headers=HEADERS)
 
-    assert r.status_code == attendu, (
-        f"{description} : attendu {attendu}, obtenu {r.status_code}"
+    assert response.status_code == attendu, (
+        f"{description} : attendu {attendu}, "
+        f"obtenu {response.status_code}. "
+        f"Réponse : {response.text}"
     )

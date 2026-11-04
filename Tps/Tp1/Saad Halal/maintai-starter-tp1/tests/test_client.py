@@ -7,6 +7,7 @@ VALID = {
 
 
 def test_500_degres_est_refuse(client):
+    # client : une fixture de conftest.py
     r = client.post("/v1/predict", json={**VALID, "temperature_c": 500})
 
     assert r.status_code == 422

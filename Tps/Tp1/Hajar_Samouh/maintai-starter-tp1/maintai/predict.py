@@ -1,4 +1,5 @@
 """Chargement du modèle sauvegardé et prédiction pour un relevé."""
+
 import json
 from dataclasses import dataclass
 

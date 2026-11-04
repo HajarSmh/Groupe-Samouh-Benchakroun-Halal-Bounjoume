@@ -2,8 +2,9 @@
 
 Usage : python -m maintai.train
 """
+
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import joblib
 import sklearn
@@ -19,10 +20,12 @@ from maintai.data import load_data, split
 
 def build_model() -> Pipeline:
     """Le prétraitement fait partie du modèle : scaler et classifieur sont sauvegardés ensemble."""
-    return Pipeline([
-        ("scale", StandardScaler()),
-        ("clf", LogisticRegression(max_iter=1000)),
-    ])
+    return Pipeline(
+        [
+            ("scale", StandardScaler()),
+            ("clf", LogisticRegression(max_iter=1000)),
+        ]
+    )
 
 
 def evaluate(model, X_test, y_test, threshold: float) -> dict:
@@ -55,7 +58,7 @@ def save(model, metrics: dict, settings: Settings) -> None:
         "features": FEATURES,
         "target": TARGET,
         "threshold": settings.threshold,
-        "trained_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "trained_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "sklearn_version": sklearn.__version__,
     }
     settings.info_path.write_text(json.dumps(info, indent=2), encoding="utf-8")

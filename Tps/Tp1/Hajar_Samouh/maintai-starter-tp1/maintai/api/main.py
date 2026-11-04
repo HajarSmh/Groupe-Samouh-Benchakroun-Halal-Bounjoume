@@ -2,6 +2,7 @@
 
 Lancement : uvicorn maintai.api.main:app --reload
 """
+
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, HTTPException

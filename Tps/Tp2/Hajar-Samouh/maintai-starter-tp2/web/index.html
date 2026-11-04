@@ -33,7 +33,43 @@ const show = (cls, text) => {
 document.getElementById("go").addEventListener("click", async () => {
   const reading = Object.fromEntries(FEATURES.map(f => [f, Number(document.getElementById(f).value)]));
   // TODO (TP2) : Envoyez reading en POST JSON à <url>/v1/predict avec l'en-tête X-API-Key (fetch), puis affichez le résultat ou l'erreur avec show()
-  show("err", "À compléter");
+  try {
+    const url = document.getElementById("url").value.trim().replace(/\/+$/, "");
+    const key = document.getElementById("key").value.trim();
+
+    if (!url || !key) {
+        show("err", "Veuillez renseigner l'URL de l'API et la clé API.");
+        return;
+    }
+
+    const resp = await fetch(`${url}/v1/predict`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": key
+        },
+        body: JSON.stringify(reading)
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+        show("err", `Erreur HTTP ${resp.status} : ${JSON.stringify(data.detail)}`);
+        return;
+    }
+
+    const probability = (data.failure_probability * 100).toFixed(2);
+
+    if (data.alert) {
+        show("alert", `ALERTE DE MAINTENANCE\nProbabilité de panne : ${probability} %\nUne intervention est recommandée.`);
+    } else {
+        show("ok", `Fonctionnement normal\nProbabilité de panne : ${probability} %\nAucune alerte détectée.`);
+    }
+
+} catch (error) {
+    show("err", "Impossible de contacter l'API. Vérifiez le serveur et la configuration CORS.");
+    console.error(error);
+}
 });
 </script>
 </body>

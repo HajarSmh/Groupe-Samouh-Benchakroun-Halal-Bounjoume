@@ -1,4 +1,5 @@
 """Fixtures partagées : données et modèle dans un dossier temporaire."""
+
 import pytest
 
 from maintai.dataset import make_dataset

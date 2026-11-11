@@ -2,9 +2,25 @@ from fastapi.testclient import TestClient
 
 from maintai.api.main import app
 
+<<<<<<< Updated upstream:Tps/Tp2/Hajar-Samouh/maintai-starter-tp2/tests/test_api.py
 HEADERS = {"X-API-Key": "test-key"}
 VALID = {"temperature_c": 60.0, "vibration_mm_s": 2.0, "load_pct": 50.0, "runtime_hours": 5000}
 HIGH_RISK = {"temperature_c": 85.0, "vibration_mm_s": 9.0, "load_pct": 95.0, "runtime_hours": 19000}
+=======
+HEADERS = {}
+VALID = {
+    "temperature_c": 60.0,
+    "vibration_mm_s": 2.0,
+    "load_pct": 50.0,
+    "runtime_hours": 5000,
+}
+HIGH_RISK = {
+    "temperature_c": 85.0,
+    "vibration_mm_s": 9.0,
+    "load_pct": 95.0,
+    "runtime_hours": 19000,
+}
+>>>>>>> Stashed changes:Tps/Tp1/maintai-starter-tp1/tests/test_api.py
 
 
 def test_health(client):
@@ -27,7 +43,9 @@ def test_high_risk_reading_raises_alert(client):
 
 
 def test_out_of_range_value_is_rejected(client):
-    r = client.post("/v1/predict", json={**VALID, "temperature_c": 500}, headers=HEADERS)
+    r = client.post(
+        "/v1/predict", json={**VALID, "temperature_c": 500}, headers=HEADERS
+    )
     assert r.status_code == 422
 
 

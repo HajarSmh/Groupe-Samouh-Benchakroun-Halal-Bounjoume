@@ -1,4 +1,5 @@
 """Configuration du projet : chemins et paramètres, lus depuis l'environnement."""
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,7 +36,9 @@ class Settings:
 def get_settings() -> Settings:
     """Lit la configuration à chaque appel, pour que les tests puissent la modifier."""
     return Settings(
-        data_path=Path(os.getenv("MAINTAI_DATA_PATH", str(ROOT / "data" / "sensors.csv"))),
+        data_path=Path(
+            os.getenv("MAINTAI_DATA_PATH", str(ROOT / "data" / "sensors.csv"))
+        ),
         models_dir=Path(os.getenv("MAINTAI_MODELS_DIR", str(ROOT / "models"))),
         threshold=float(os.getenv("MAINTAI_THRESHOLD", "0.3")),
         api_key=os.getenv("MAINTAI_API_KEY") or None,

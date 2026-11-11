@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
 
     res = predictor.predict(reading)
     etat = "ALERTE" if res["alert"] else "normal"
-    print(f"Probabilité de panne : {round(res['failure_probability'] * 100)} % ({etat})")
+    print(f"Probabilité de panne estimée : {round(res['failure_probability'] * 100)} % ({etat})")
     return 0
 
 

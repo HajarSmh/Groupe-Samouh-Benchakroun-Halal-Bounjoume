@@ -162,6 +162,85 @@ modèle. Pour comparer deux modèles, il faut les évaluer sur le même jeu de t
 
 Dans `docs/adr/004-choix-du-modele.md` : le modèle et le seuil retenus, à partir de votre tableau MLflow. Indiquez l'identifiant du run et le `data_md5` de la version des données utilisée.
 
+## Grid Search des hyperparamètres
+
+Toutes les combinaisons ont été entraînées sur les mêmes données (v2, 8000 relevés,
+`data_md5` = `93fdeef2cac1893c4f720c16457eea75`).
+Chaque combinaison est un run MLflow de l'expérience `maintai`.
+
+### Marges de variation et valeurs testées
+
+| Hyperparamètre | Valeurs testées | Pourquoi cette marge |
+|---|---|---|
+| `model` | `logreg`, `forest` | les deux modèles proposés par `train.py` |
+| `C` (logreg seulement) | 0.01, 0.1, 1.0, 10.0 | de 0.01 (forte régularisation) à 10 (faible), par facteur 10 |
+| `threshold` | 0.15, 0.2, 0.3, 0.4, 0.5 | de 0.5 (seuil par défaut) vers le bas, pour favoriser le recall |
+
+Nombre de combinaisons : logreg 4 × 5 = 20, forêt 5 (pas de `C`), soit **25 runs**.
+
+### Code de la boucle (`grid_search.py`)
+
+```python
+C_VALUES = [0.01, 0.1, 1.0, 10.0]
+THRESHOLDS = [0.15, 0.2, 0.3, 0.4, 0.5]
+
+combinaisons = [("logreg", c, t) for c, t in itertools.product(C_VALUES, THRESHOLDS)]
+combinaisons += [("forest", None, t) for t in THRESHOLDS]
+assert len(combinaisons) <= 30
+
+env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+resultats = []
+
+for i, (model, c, t) in enumerate(combinaisons, 1):
+    cmd = [sys.executable, "-m", "maintai.train", "--model", model, "--threshold", str(t)]
+    if c is not None:
+        cmd += ["--C", str(c)]
+    print(f"[{i}/{len(combinaisons)}] model={model} C={c} threshold={t}", flush=True)
+
+    sortie = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                            env=env, check=True).stdout
+    metriques = json.loads(sortie[sortie.index("{"):sortie.rindex("}") + 1])["model"]
+    run_id = sortie.split("Run MLflow :")[-1].strip()
+
+    resultats.append({
+        "model": model, "C": c if c is not None else "-", "threshold": t,
+        "recall": metriques["recall"], "precision": metriques["precision"],
+        "accuracy": metriques["accuracy"], "run_id": run_id,
+    })
+
+# Règle de choix : le meilleur recall, avec une precision d'au moins 0.5
+candidats = [r for r in resultats if r["precision"] >= 0.5] or resultats
+meilleur = max(candidats, key=lambda r: (r["recall"], r["precision"]))
+```
+
+### Résultats détaillés de 5 runs
+
+| Run MLflow | model | C | threshold | recall | precision | accuracy |
+|---|---|---|---|---|---|---|
+| 0e3226a6 | logreg | 10.0 | 0.15 | **0.859** | 0.507 | 0.875 |
+| 78035ac2 | logreg | 0.01 | 0.15 | 0.893 | 0.470 | 0.858 |
+| 21ed28cd | forest | - | 0.15 | 0.878 | 0.481 | 0.863 |
+| afb97b04 | logreg | 1.0 | 0.2 | 0.824 | 0.567 | 0.897 |
+| 8f94f597 | logreg | 1.0 | 0.3 | 0.741 | 0.650 | 0.916 |
+
+- **Le seuil a le plus d'effet** : en le baissant de 0.5 à 0.15, le recall passe d'environ
+  0.58 à 0.86 (logreg, C = 1), mais la precision baisse d'environ 0.77 à 0.51.
+- **`C` a peu d'effet** au-delà de 0.1 : C = 1.0 et C = 10.0 donnent presque les mêmes résultats.
+  C = 0.01 (forte régularisation) change davantage les résultats.
+- **La forêt aléatoire n'est pas meilleure** : à seuil égal, elle a un recall proche de la
+  régression logistique mais une precision plus basse.
+
+### Meilleure combinaison
+
+Règle de choix : **le meilleur recall, avec une precision d'au moins 0.5** (au moins une alerte
+sur deux doit être une vraie panne).
+
+Résultat : **logreg, C = 10.0, threshold = 0.15** : recall 0.859, precision 0.507, accuracy 0.875
+(run `0e3226a65db9439a8308f27ee8486d48`).
+
+Le run logreg C = 0.01, seuil 0.15 a un recall plus haut (0.893), mais sa precision (0.470) est
+sous 0.5 : plus d'une alerte sur deux serait fausse.
+
 ## 6. Questions de compréhension
 
 1. Quelle différence entre Git, DVC et MLflow ? Que versionne chacun ?

@@ -1,38 +1,48 @@
 # ADR 004 : Choix du modèle et du seuil de MaintAI
 
-Date : 25/11/2026 · Auteurs : Hajar Samouh, Imane Benchakroun, Saad Halal, Oussama Bounjoume
+Date : 25/11/2026 · Auteurs : Hajar Samouh, Imane Benchakroun, … Halal, … Bounjoume
 
 ## Contexte
 MaintAI doit prévenir les pannes des machines. Une panne manquée coûte beaucoup plus cher
 (arrêt de production, réparation) qu'une fausse alerte (une inspection inutile) : le recall
-est donc la métrique la plus importante.
+est donc la métrique la plus importante. Mais trop de fausses alertes feraient perdre
+confiance aux techniciens : nous voulons qu'au moins une alerte sur deux soit vraie
+(precision ≥ 0.5).
 
 ## Options étudiées
-Quatre entraînements comparés dans MLflow, sur les mêmes données (v1, 5000 relevés) :
+Un Grid Search de 25 combinaisons, toutes entraînées sur les mêmes données (v2, 8000 relevés) :
+modèle (`logreg`, `forest`) × `C` (0.01, 0.1, 1.0, 10.0, pour logreg) × seuil (0.15, 0.2, 0.3,
+0.4, 0.5). Les options les plus intéressantes :
 
-1. Régression logistique, C = 1.0, seuil 0.3 : recall 0.750, precision 0.622, accuracy 0.904.
-   Bon équilibre, mais une panne sur quatre est manquée.
-2. Régression logistique, C = 0.01, seuil 0.3 : recall 0.691, precision 0.653, accuracy 0.908.
-   Meilleure accuracy, mais le plus mauvais recall.
-3. Régression logistique, C = 1.0, seuil 0.2 : recall 0.838, precision 0.543, accuracy 0.882.
-   Le meilleur recall, mais plus de fausses alertes.
-4. Forêt aléatoire, seuil 0.3 : recall 0.728, precision 0.562, accuracy 0.886.
-   Moins bonne que la régression logistique sur le recall et la precision, et plus lourde.
+1. Logreg, C = 0.01, seuil 0.15 : recall 0.893, precision 0.470.
+   Le meilleur recall, mais plus d'une alerte sur deux est fausse.
+2. Logreg, C = 10.0, seuil 0.15 : recall 0.859, precision 0.507, accuracy 0.875.
+   Le meilleur recall avec une precision au-dessus de 0.5.
+3. Logreg, C = 1.0, seuil 0.2 : recall 0.824, precision 0.567, accuracy 0.897.
+   Plus équilibré, mais manque environ 3.5 % de pannes en plus que l'option 2.
+4. Forêt aléatoire, seuil 0.15 : recall 0.878, precision 0.481.
+   Precision sous 0.5, et à seuil égal elle n'est pas meilleure que la régression logistique.
+5. Seuils 0.4 et 0.5 : precision élevée (jusqu'à 0.83), mais le recall descend entre 0.46 et 0.67 :
+   trop de pannes manquées.
 
 ## Décision
-Nous retenons l'option 3 : régression logistique (C = 1.0) avec un seuil de 0.2.
-C'est le modèle qui détecte le plus de pannes (83.8 %), ce qui répond à la contrainte principale :
-ne pas manquer de panne.
+Nous retenons l'option 2 : **régression logistique, C = 10.0, seuil 0.15**.
+C'est la combinaison qui détecte le plus de pannes (85.9 %) tout en gardant au moins une alerte
+vraie sur deux (precision 0.507). Elle répond à la contrainte principale du projet : ne pas
+manquer de panne, sans noyer les techniciens sous les fausses alertes.
 
-- Run MLflow : `6813f91e94ab40969e1c1ae3f5edb4b1`
-- Données : v1, `data_md5` = `73e0b7cb3c6f795c70c3ddf970b99c15` (commit Git `4b7079c`)
+- Run MLflow : `0e3226a65db9439a8308f27ee8486d48`
+- Données : v2, `data_md5` = `93fdeef2cac1893c4f720c16457eea75` (commit Git `17fcc0c`)
 
 ## Conséquences
-- On accepte plus de fausses alertes : environ une alerte sur deux est fausse (precision 0.543).
+- On accepte beaucoup de fausses alertes : environ une alerte sur deux est fausse.
   Les techniciens feront plus d'inspections inutiles.
-- Le modèle reste simple et rapide, et ses résultats sont faciles à expliquer.
-- Avec l'identifiant du run et le `data_md5`, on peut retrouver le modèle (MLflow), les données
-  (DVC) et les versions exactes des bibliothèques.
-- À surveiller : si les données changent (dérive), il faudra ré-entraîner et comparer les runs
-  sur un même jeu de test. Le seuil pourra aussi être ajusté si les fausses alertes gênent trop
-  les techniciens.
+- La precision (0.507) est juste au-dessus de notre limite : si les fausses alertes gênent trop
+  sur le terrain, on pourra passer au seuil 0.2 (option 3), en acceptant de manquer un peu plus
+  de pannes.
+- C = 1.0 donne presque les mêmes résultats que C = 10.0 : le choix de `C` compte peu ici.
+- La régression logistique reste simple, rapide et facile à expliquer.
+- Avec l'identifiant du run et le `data_md5`, on retrouve le modèle (MLflow), les données (DVC)
+  et les versions exactes des bibliothèques.
+- À surveiller : si les données changent (dérive), relancer le Grid Search sur les nouvelles
+  données et comparer les runs sur un même jeu de test.

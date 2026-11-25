@@ -6,22 +6,24 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "maintai"
 dynamic = ["version"]  # lue dans maintai/__init__.py (voir plus bas)
-description = "TODO : une phrase qui dit ce que fait le package"
+description = "Prédiction de panne de machines à partir de relevés de capteurs : modèle, API, client et commande maintai-predict"
 readme = "README.md"
 requires-python = ">=3.11"
-# TODO TP4 sprint 1 : dependencies = [...]
-#   les bibliothèques que le code de maintai/ importe pour fonctionner,
-#   avec une version minimale, par exemple "pandas>=2.2"
-#   (pas pytest, pas fastapi : ils sont dans les groupes optionnels ci-dessous)
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "scikit-learn>=1.5",
+    "joblib>=1.4",
+    "httpx>=0.27",
+]
 
 [project.optional-dependencies]
 api = ["fastapi>=0.115", "uvicorn[standard]>=0.30"]
 ui = ["streamlit>=1.40"]
 dev = ["pytest>=8", "ruff"]
 
-# TODO TP4 sprint 1 : [project.scripts]
-#   une commande maintai-predict qui appelle la fonction main de maintai/cli.py
-#   format : nom-de-la-commande = "module:fonction"
+[project.scripts]
+maintai-predict = "maintai.cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "maintai.__version__"}

@@ -31,9 +31,9 @@ class MaintaiClient:
 
     def predict(self, reading: dict) -> dict:
         """Envoie un relevé ; lève APIError si l'API refuse, httpx.HTTPError si elle est injoignable."""
-        # TODO TP3 sprint 2 :
-        #   1. préparer l'en-tête {"X-API-Key": self.api_key} (seulement si une clé est donnée)
-        #   2. envoyer self.http.post("/v1/predict", json=reading, headers=...)
-        #   3. si le code n'est pas 200 : raise APIError(r.status_code, r.json().get("detail"))
-        #   4. sinon renvoyer r.json()
-        raise NotImplementedError("TP3 sprint 2 : MaintaiClient.predict")
+        # L'en-tête n'est envoyé que si une clé est donnée
+        headers = {"X-API-Key": self.api_key} if self.api_key else {}
+        r = self.http.post("/v1/predict", json=reading, headers=headers)
+        if r.status_code != 200:
+            raise APIError(r.status_code, r.json().get("detail"))
+        return r.json()

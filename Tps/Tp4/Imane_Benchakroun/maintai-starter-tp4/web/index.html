@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>MaintAI : client web</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; }
+  label { display: block; margin-top: 12px; }
+  input { width: 100%; padding: 6px; box-sizing: border-box; }
+  button { margin-top: 16px; padding: 8px 16px; }
+  #result { margin-top: 20px; padding: 12px; border-radius: 6px; }
+  .ok { background: #e6f4ea; } .alert { background: #fde7e7; } .err { background: #fff4e5; }
+</style>
+</head>
+<body>
+<h1>MaintAI</h1>
+<label>URL de l'API <input id="url" value="http://localhost:8000"></label>
+<label>Clé API <input id="key" type="password"></label>
+<label>Température (°C) <input id="temperature_c" type="number" step="0.1" value="72"></label>
+<label>Vibration (mm/s) <input id="vibration_mm_s" type="number" step="0.1" value="6"></label>
+<label>Charge (%) <input id="load_pct" type="number" step="1" value="85"></label>
+<label>Heures de fonctionnement <input id="runtime_hours" type="number" step="100" value="15000"></label>
+<button id="go">Prédire</button>
+<div id="result"></div>
+<script>
+const FEATURES = ["temperature_c", "vibration_mm_s", "load_pct", "runtime_hours"];
+const show = (cls, text) => {
+  const r = document.getElementById("result");
+  r.className = cls;
+  r.textContent = text;
+};
+
+document.getElementById("go").addEventListener("click", async () => {
+  const reading = Object.fromEntries(FEATURES.map(f => [f, Number(document.getElementById(f).value)]));
+  try {
+    const resp = await fetch(`${document.getElementById("url").value}/v1/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-Key": document.getElementById("key").value },
+      body: JSON.stringify(reading),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      show("err", `Erreur ${resp.status} : ${JSON.stringify(data.detail)}`);
+      return;
+    }
+    const pct = (data.failure_probability * 100).toFixed(0);
+    show(data.alert ? "alert" : "ok", `Probabilité de panne : ${pct} % (${data.alert ? "ALERTE" : "normal"})`);
+  } catch (e) {
+    show("err", "API injoignable (serveur arrêté ou origine refusée par CORS) : " + e.message);
+  }
+});
+</script>
+</body>
+</html>

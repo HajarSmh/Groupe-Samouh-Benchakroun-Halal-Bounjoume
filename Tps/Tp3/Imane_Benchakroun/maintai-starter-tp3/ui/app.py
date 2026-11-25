@@ -62,8 +62,18 @@ with onglet_prediction:
         envoye = st.form_submit_button("Prédire")
 
     if envoye:
-        # TODO TP3 sprint 2 :
-        #   1. créer MaintaiClient(url, api_key=cle) et appeler .predict(releve)
-        #   2. APIError → st.warning avec le code et le message ; httpx.HTTPError → st.error("API injoignable ...")
-        #   3. sinon : st.metric("Probabilité de panne", f"{pct} %"), puis st.error (alerte) ou st.success (normal)
+        api = MaintaiClient(url, api_key=cle or None)
+        try:
+            res = api.predict(releve)
+        except APIError as e:
+            st.warning(f"Erreur {e.status_code} : {e.detail}")
+        except httpx.HTTPError:
+            st.error("API injoignable : uvicorn est-il lancé ?")
+        else:
+            pct = round(res["failure_probability"] * 100)
+            st.metric("Probabilité de panne", f"{pct} %")
+            if res["alert"]:
+                st.error(f"ALERTE : au-dessus du seuil {res['threshold']}")
+            else:
+                st.success(f"Normal : sous le seuil {res['threshold']}")
         st.info("Sprint 2 : la prédiction s'affichera ici.")

@@ -137,6 +137,49 @@ Il faut de plus être prudent : les deux runs n'ont pas les mêmes données d'en
 
 Dans `docs/adr/004-choix-du-modele.md` : le modèle et le seuil retenus, à partir de votre tableau MLflow. Indiquez l'identifiant du run et le `data_md5` de la version des données utilisée.
 
+## Grid Search
+
+**Objectif.** Choisir le modèle et le seuil de façon systématique. Données : v2 (data_md5 `93fdeef2cac1893c4f720c16457eea75`, 8000 relevés, 6400 en entraînement, 1600 en test). Chaque combinaison est un run MLflow.
+
+**Hyperparamètres et plages explorées (30 cas).**
+
+| Modèle | C | threshold | Nombre de cas |
+|---|---|---|---|
+| logreg | 0.01 · 0.1 · 1.0 · 10.0 | 0.1 · 0.15 · 0.2 · 0.25 · 0.3 · 0.4 | 4 × 6 = 24 |
+| forest | (sans objet) | 0.1 · 0.15 · 0.2 · 0.25 · 0.3 · 0.4 | 6 |
+
+**Critère de sélection** (fixé avant les résultats) : une panne manquée coûte plus cher qu'une fausse alerte, donc on retient le recall maximal parmi les cas avec precision ≥ 0.50. 22 cas sur 30 respectent cette contrainte. La F2 est donnée à titre indicatif.
+
+**Code de la boucle** (script complet : `grid_search.py`, les 30 résultats : `grid_results.csv`) :
+
+```python
+GRID = [("logreg", c, t) for c, t in itertools.product(C_VALUES, THRESHOLDS)]
+GRID += [("forest", None, t) for t in THRESHOLDS]
+for model, c, t in GRID:
+    cmd = [sys.executable, "-m", "maintai.train", "--model", model, "--threshold", str(t)]
+    if c is not None:
+        cmd += ["--C", str(c)]
+    out = subprocess.run(cmd, capture_output=True, text=True, errors="replace")
+    # lecture des métriques (JSON) et du run_id dans la sortie
+```
+
+**Les 5 meilleurs runs :**
+
+| Rang | model | C | seuil | recall | precision | accuracy | F2 | run_id |
+|---|---|---|---|---|---|---|---|---|
+| 1 | logreg | 10.0 | 0.15 | 0.859 | 0.507 | 0.875 | 0.754 | 024a26966b674c06a77435e35f5c728f |
+| 2 | logreg | 1.0 | 0.15 | 0.859 | 0.506 | 0.874 | 0.754 | fdffc943a36d44e0a5d341b3886ab7ff |
+| 3 | logreg | 0.1 | 0.2 | 0.829 | 0.559 | 0.894 | 0.756 | 8a886a399ac14af18bd881ce00582bc7 |
+| 4 | logreg | 0.01 | 0.2 | 0.829 | 0.547 | 0.890 | 0.752 | 083844c3ffa44f1ead266f59c612b094 |
+| 5 | forest | – | 0.2 | 0.829 | 0.526 | 0.882 | 0.743 | 76e4cf7662424149bdb3f0aed907f98f |
+
+**Observations.**
+- Le seuil pèse beaucoup plus que `C` : à seuil égal, les quatre valeurs de C donnent des résultats proches, et C = 1 et C = 10 sont presque identiques (parfois égaux).
+- Le seuil 0.1 donne le meilleur recall (jusqu'à 0.966) mais une precision de 0.38 à 0.46 : il est éliminé par le critère.
+- La forêt n'est jamais meilleure que la régression logistique à seuil égal (à 0.2 : precision 0.526 contre 0.567 pour un recall comparable).
+
+**Meilleur run retenu** : régression logistique, C = 10.0, seuil 0.15, run `024a26966b674c06a77435e35f5c728f` (recall 0.859, precision 0.507). Il est premier selon le critère fixé, mais l'écart avec le rang 2 (même seuil, C = 1) est négligeable ; le rang 3 (seuil 0.2, precision 0.559) reste une alternative défendable si l'on veut moins de fausses alertes.
+
 ## 6. Questions de compréhension
 
 1. Quelle différence entre Git, DVC et MLflow ? Que versionne chacun ?
